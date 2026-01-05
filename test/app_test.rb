@@ -7,9 +7,6 @@ require 'rack/test'
 
 require_relative '../app'
 
-# TODO: test account creation
-# TODO: test user sign in
-
 class SimpleFlightTrackerTest < Minitest::Test
   include Rack::Test::Methods
 
@@ -92,5 +89,52 @@ class SimpleFlightTrackerTest < Minitest::Test
     post '/users/signup', { username: 'test', password: 'testsecret' }
     assert_equal 200, last_response.status
     assert_includes last_response.body, 'That username is taken. Please choose another.'
+  end
+
+  def test_user_signin
+    post '/users/signup', { username: 'test', password: 'testsecret' }
+    assert_equal 302, last_response.status
+    assert_includes load_user_credentials, 'test'
+
+    post '/users/signin', { username: 'test', password: 'testsecret' }
+    assert_equal 302, last_response.status
+    assert_equal 'test', session[:username]
+    assert_includes last_response['Location'], '/flights'
+  end
+
+  def test_user_signin_empty_username
+    post '/users/signup', { username: 'test', password: 'testsecret' }
+    assert_equal 302, last_response.status
+    assert_includes load_user_credentials, 'test'
+
+    post '/users/signin', { username: ' ', password: 'testsecret' }
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'Username cannot be blank.'
+  end
+
+  def test_user_signin_empty_password
+    post '/users/signup', { username: 'test', password: 'testsecret' }
+    assert_equal 302, last_response.status
+    assert_includes load_user_credentials, 'test'
+
+    post '/users/signin', { username: 'test', password: '' }
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'Password cannot be blank.'
+  end
+
+  def test_user_signin_wrong_password
+    post '/users/signup', { username: 'test', password: 'testsecret' }
+    assert_equal 302, last_response.status
+    assert_includes load_user_credentials, 'test'
+
+    post '/users/signin', { username: 'test', password: 'wrongsecret' }
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'Username and password do not match.'
+  end
+
+  def test_user_signin_nonexistent_username
+    post '/users/signin', { username: 'test', password: 'secret' }
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'Username and password do not match.'
   end
 end
