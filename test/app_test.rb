@@ -7,8 +7,6 @@ require 'rack/test'
 
 require_relative '../app'
 
-# TODO: test for signup page
-# TODO: test for signin page
 # TODO: test account creation
 # TODO: test user sign in
 
@@ -63,5 +61,36 @@ class SimpleFlightTrackerTest < Minitest::Test
     assert_includes last_response.body, '<h4>Please enter your username and password'
     assert_includes last_response.body, '<form'
     assert_includes last_response.body, '<div class="form-field"'
+  end
+
+  def test_create_account
+    post '/users/signup', { username: 'test', password: 'testsecret' }
+
+    assert_equal 302, last_response.status
+    assert_includes load_user_credentials, 'test'
+  end
+
+  def test_create_account_empty_username
+    post '/users/signup', { username: '    ', password: 'testsecret' }
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'Username cannot be blank.'
+  end
+
+  def test_create_account_empty_password
+    post '/users/signup', { username: 'test', password: '' }
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'Password cannot be blank.'
+  end
+
+  def test_create_account_existing_username
+    post '/users/signup', { username: 'test', password: 'testsecret' }
+    assert_equal 302, last_response.status
+    assert_includes load_user_credentials, 'test'
+
+    post '/users/signup', { username: 'test', password: 'testsecret' }
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'That username is taken. Please choose another.'
   end
 end
