@@ -10,6 +10,7 @@
     <% if session[:message] %>
       <h2 class="flash-message"><%= session.delete(:message) %></h2>
     <% end %>
+    <h1>Flight Tracker</h1>
     <%= yield %>
   </body>
 </html>

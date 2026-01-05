@@ -6,6 +6,11 @@ require 'sinatra'
 require 'sinatra/reloader' if development?
 require 'yaml'
 
+# TODO: create flights view
+# * each flight needs to be displayed with all its fields
+# * we need a trashcan icon to delete
+# * we need an icon to add a new flight
+
 def credentials_pathname
   File.join(data_path, 'users.yaml')
 end
@@ -30,11 +35,21 @@ def load_user_credentials
   File.exist?(credentials_pathname) ? YAML.load_file(credentials_pathname) : {}
 end
 
+def load_user_flights
+  pathname = File.join(data_path, 'flights.yaml')
+  File.exist?(pathname) ? YAML.load_file(pathname) : {}
+end
+
 def require_user_signin
   return if user_signed_in?
 
   session[:message] = 'You must be signed in to complete that action.'
   redirect '/'
+end
+
+def save_user_flights(flights)
+  pathname = File.join(data_path, 'flights.yaml')
+  File.write(pathname, YAML.dump(flights))
 end
 
 def save_user_credentials(credentials)
@@ -55,6 +70,14 @@ def valid_credentials?(username, password)
 
   credentials = load_user_credentials
   BCrypt::Password.new(credentials[username]) == password
+end
+
+helpers do
+  def previous_select(current_option, param_option)
+    return '' unless param_option == format('%02d', current_option)
+
+    'selected'
+  end
 end
 
 configure do
@@ -119,5 +142,56 @@ end
 get '/flights' do
   require_user_signin
 
+  all_flights = load_user_flights
+  @flights = all_flights[session[:username]]
   erb :flights
+end
+
+get '/flights/new' do
+  erb :new_flight
+end
+
+post '/flights/new' do
+  params.each_pair do |key, value|
+    next unless value.strip.empty?
+
+    field = key.split('_').map(&:capitalize).join(' ')
+    session[:message] = "#{field} cannot be blank."
+    halt erb :new_flight
+  end
+
+  flight_number = params[:flight_number]
+  unless flight_number.match?(/[a-zA-Z]{2}[0-9]{1,3}/)
+    session[:message] = 'Invalid Flight Number.'
+    halt erb :new_flight
+  end
+
+  flight = {
+    id: SecureRandom.uuid,
+    airline: params[:airline],
+    flight_number: params[:flight_number],
+    destination: params[:destination],
+    departure_time: "#{params[:hour]}:#{params[:minute]}"
+  }
+  all_flights = load_user_flights
+  user_flights = all_flights[session[:username]] || []
+  user_flights << flight
+  all_flights[session[:username]] = user_flights
+  save_user_flights(all_flights)
+  session[:message] = "Now tracking flight #{flight[:flight_number]}."
+  redirect '/flights'
+end
+
+get '/flights/:flight_id/delete' do
+  all_flights = load_user_flights
+  user_flights = all_flights[session[:username]]
+  flight = user_flights.find { |flight| flight[:id] == params[:flight_id] }
+  flight_number = flight[:flight_number]
+  all_flights[session[:username]] = user_flights.reject do |flight|
+    flight[:id] == params[:flight_id]
+  end
+  save_user_flights(all_flights)
+
+  session[:message] = "No longer tracking flight #{flight_number}."
+  redirect '/flights'
 end
