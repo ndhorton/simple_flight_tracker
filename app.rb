@@ -6,11 +6,6 @@ require 'sinatra'
 require 'sinatra/reloader' if development?
 require 'yaml'
 
-# TODO: create flights view
-# * each flight needs to be displayed with all its fields
-# * we need a trashcan icon to delete
-# * we need an icon to add a new flight
-
 def credentials_pathname
   File.join(data_path, 'users.yaml')
 end
@@ -89,6 +84,11 @@ get '/' do
   redirect '/flights' if user_signed_in?
 
   erb :home
+end
+
+get '/users/signout' do
+  session[:username] = nil
+  redirect '/'
 end
 
 get '/users/signin' do
