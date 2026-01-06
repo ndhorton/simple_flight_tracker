@@ -397,6 +397,43 @@ class SimpleFlightTrackerTest < Minitest::Test
     assert_includes last_response.body, 'Flight number TU28 is already being tracked.'
   end
 
+  def test_edit_flight_page
+    parameters = {
+      airline: 'Air Tunisia',
+      flight_number: 'TU28',
+      destination: 'Prague',
+      hour: '06',
+      minute: '35'
+    }
+
+    post '/flights/new', parameters, admin_session
+
+    assert_equal 302, last_response.status
+    assert_includes last_response['Location'], '/flights'
+
+    get last_response['Location'], {}, admin_session
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, '<td>Air Tunisia</td>'
+    assert_includes last_response.body, '<td>TU28</td>'
+    assert_includes last_response.body, '<td>Prague</td>'
+    assert_includes last_response.body, '<td>06:35</td>'
+
+    flight = load_user_flights[session[:username]].find do |current_flight|
+      current_flight[:flight_number] == 'TU28'
+    end
+
+    get "/flights/#{flight[:id]}/edit"
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, '<h3>Please amend the flight details'
+    assert_includes last_response.body, '<form'
+    assert_includes last_response.body, '<label for="airline"'
+    assert_includes last_response.body, '<label for="flight-number"'
+    assert_includes last_response.body, '<label for="destination"'
+    assert_includes last_response.body, '<label>Departure Time'
+  end
+
   def test_edit_flight
     parameters = {
       airline: 'Air Tunisia',
