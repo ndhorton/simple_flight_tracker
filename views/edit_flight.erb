@@ -1,0 +1,40 @@
+<h3>Please amend the flight details</h3>
+<form action="/flights/<%= @flight[:id] %>/edit" method="post">
+  <fieldset>
+    <div class="form-field">
+      <label for="airline">Airline:</label>
+      <input type="text" id="airline" name="airline" spellcheck="off"
+        value="<%= @flight[:airline] %>">
+    </div>
+    <div class="form-field">
+      <label for="flight-number">Flight Number:</label>
+      <input type="text" id="flight-number" name="flight_number"
+          spellcheck="off" value="<%= @flight[:flight_number] %>">
+    </div>
+    <div class="form-field">
+      <label for="destination">Destination:</label>
+      <input type="text" id="destination" name="destination"
+      spellcheck="off" value="<%= @flight[:destination] %>">
+    </div>
+    <div class="form-field">
+      <label>Departure Time:</label>
+      <div class="time-input">
+        <select name="hour">
+          <% (0..23).each do |hour| %>
+            <option <%= previous_select(hour, @previous_hour ) %>>
+            <%= format("%02d", hour) %>
+            </option>
+            <% end %>
+          </select>
+          <select name="minute">
+            <% (0..59).each do |minute| %>
+              <option <%= previous_select(minute, @previous_minute) %>>
+                <%= format("%02d", minute) %>
+              </option>
+              <% end %>
+            </select>
+          </div>
+        </div>
+        <button type="submit">Change Flight Details</button>
+      </fieldset>
+    </form>

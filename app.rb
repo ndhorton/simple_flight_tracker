@@ -6,10 +6,6 @@ require 'sinatra'
 require 'sinatra/reloader' if development?
 require 'yaml'
 
-# TODO: add edit button to flights page
-# TODO: add form view for edit
-# TODO: add GET and POST routes for edit
-
 def add_new_flight(parameters)
   all_flights = load_user_flights
   user_flights = all_flights[session[:username]] || []
@@ -26,7 +22,7 @@ def create_flight(parameters)
   {
     id: SecureRandom.uuid,
     airline: parameters[:airline],
-    flight_number: parameters[:flight_number],
+    flight_number: parameters[:flight_number].upcase,
     destination: parameters[:destination],
     departure_time: "#{parameters[:hour]}:#{parameters[:minute]}"
   }
@@ -99,29 +95,29 @@ def valid_credentials?(username, password)
   BCrypt::Password.new(credentials[username]) == password
 end
 
-def validate_fields_not_empty(parameters)
+def validate_fields_not_empty(parameters, page)
   parameters.each_pair do |key, value|
     next unless value.strip.empty?
 
     field = key.split('_').map(&:capitalize).join(' ')
     session[:message] = "#{field} cannot be blank."
-    halt erb :new_flight
+    halt erb page
   end
 end
 
-def validate_flight_fields(parameters)
-  validate_fields_not_empty(parameters)
-  validate_flight_number(parameters)
+def validate_flight_fields(parameters, page, unique_flight_number: true)
+  validate_fields_not_empty(parameters, page)
+  validate_flight_number(parameters, page, unique_flight_number)
 end
 
-def validate_flight_number(parameters)
+def validate_flight_number(parameters, page, unique_flight_number)
   flight_number = parameters[:flight_number].strip
   if !flight_number.match?(/\A[a-zA-Z]{2}[0-9]{1,3}\z/)
     session[:message] = 'Invalid Flight Number.'
-    halt erb :new_flight
-  elsif flight_number_exists?(flight_number)
+    halt erb page
+  elsif unique_flight_number && flight_number_exists?(flight_number)
     session[:message] = "Flight number #{flight_number} is already being tracked."
-    halt erb :new_flight
+    halt erb page
   end
 end
 
@@ -214,7 +210,7 @@ end
 post '/flights/new' do
   require_user_signin
 
-  validate_flight_fields(params)
+  validate_flight_fields(params, :new_flight)
 
   add_new_flight(params)
 
@@ -234,5 +230,37 @@ get '/flights/:flight_id/delete' do
   save_user_flights(all_flights)
 
   session[:message] = "No longer tracking flight #{flight_number}."
+  redirect '/flights'
+end
+
+get '/flights/:flight_id/edit' do
+  require_user_signin
+
+  all_flights = load_user_flights
+  user_flights = all_flights[session[:username]]
+  @flight = user_flights.find { |flight| flight[:id] == params[:flight_id] }
+  @previous_hour, @previous_minute = @flight[:departure_time].split(':')
+  erb :edit_flight
+end
+
+post '/flights/:flight_id/edit' do
+  require_user_signin
+
+  all_flights = load_user_flights
+  user_flights = all_flights[session[:username]]
+  flight = user_flights.find { |flight| flight[:id] == params[:flight_id] }
+  # we create @flight purely for the view in case validation fails
+  @flight = create_flight(params)
+  @flight[:id] = flight[:id]
+  @previous_hour, @previous_minute = @flight[:departure_time].split(':')
+  validate_flight_fields(params, :edit_flight, unique_flight_number: false)
+
+  flight[:airline] = @flight[:airline]
+  flight[:flight_number] = @flight[:flight_number]
+  flight[:destination] = @flight[:destination]
+  flight[:departure_time] = "#{params[:hour]}:#{params[:minute]}"
+
+  save_user_flights(all_flights)
+
   redirect '/flights'
 end

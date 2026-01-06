@@ -62,3 +62,7 @@ fieldset {
 .time-input select {
     margin-right: 4px;
 }
+
+.table-spacer {
+    display: none;
+}

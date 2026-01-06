@@ -1,21 +1,27 @@
 <h4><a href="/flights/new">Track a new flight</a></h4>
 <table class="flights">
-  <tr>
-    <th scope="col">Airline</th>
-    <th scope="col">Flight Number</th>
-    <th scope="col">Destination</th>
-    <th scope="col">Departure Time</th>
-    <th></th>
-  </tr>
-  <% @flights&.each do |flight| %>
+  <thead>
     <tr>
-      <td><%= flight[:airline] %></td>
-      <td><%= flight[:flight_number] %></td>
-      <td><%= flight[:destination] %></td>
-      <td><%= flight[:departure_time] %></td>
-      <td><a href="/flights/<%= flight[:id] %>/delete">Delete</a></td>
+      <th scope="col">Airline</th>
+      <th scope="col">Flight Number</th>
+      <th scope="col">Destination</th>
+      <th scope="col">Departure Time</th>
+      <th class="table-spacer"></th>
+      <th class="table-spacer"></th>
     </tr>
-  <% end %>
+  </thead>
+  <tbody>
+    <% @flights&.each do |flight| %>
+      <tr>
+        <td><%= flight[:airline] %></td>
+        <td><%= flight[:flight_number] %></td>
+        <td><%= flight[:destination] %></td>
+        <td><%= flight[:departure_time] %></td>
+        <td><a href="/flights/<%= flight[:id] %>/edit">Edit</a></td>
+        <td><a href="/flights/<%= flight[:id] %>/delete">Delete</a></td>
+      </tr>
+    <% end %>
+  </tbody>
 </table>
 <ul class="links">
   <li><a href="/users/signout">Sign Out</a></li>
