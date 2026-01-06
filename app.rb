@@ -6,9 +6,6 @@ require 'sinatra'
 require 'sinatra/reloader' if development?
 require 'yaml'
 
-# TODO: write tests for existing functionality
-# TODO: add validation to check if a flight with that flight number
-#         is already being tracked
 # TODO: add edit button to flights page
 # TODO: add form view for edit
 # TODO: add GET and POST routes for edit
@@ -53,6 +50,12 @@ end
 
 def encrypt_password(password)
   BCrypt::Password.create(password).to_s
+end
+
+def flight_number_exists?(flight_number)
+  user_flights = load_user_flights[session[:username]]
+  !!user_flights &&
+    user_flights.any? { |flight| flight[:flight_number] == flight_number }
 end
 
 def load_user_credentials
@@ -108,12 +111,18 @@ end
 
 def validate_flight_fields(parameters)
   validate_fields_not_empty(parameters)
+  validate_flight_number(parameters)
+end
 
+def validate_flight_number(parameters)
   flight_number = parameters[:flight_number].strip
-  return if flight_number.match?(/\A[a-zA-Z]{2}[0-9]{1,3}\z/)
-
-  session[:message] = 'Invalid Flight Number.'
-  halt erb :new_flight
+  if !flight_number.match?(/\A[a-zA-Z]{2}[0-9]{1,3}\z/)
+    session[:message] = 'Invalid Flight Number.'
+    halt erb :new_flight
+  elsif flight_number_exists?(flight_number)
+    session[:message] = "Flight number #{flight_number} is already being tracked."
+    halt erb :new_flight
+  end
 end
 
 helpers do

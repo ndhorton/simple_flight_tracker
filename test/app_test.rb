@@ -363,4 +363,37 @@ class SimpleFlightTrackerTest < Minitest::Test
     assert_includes last_response.body, 'Sign In'
     assert_includes last_response.body, 'Sign Up'
   end
+
+  def test_add_new_flight_with_existing_flight_number
+    parameters = {
+      airline: 'Air Tunisia',
+      flight_number: 'TU28',
+      destination: 'Prague',
+      hour: '06',
+      minute: '35'
+    }
+
+    post '/flights/new', parameters, admin_session
+
+    assert_equal 302, last_response.status
+    assert_includes last_response['Location'], '/flights'
+
+    get last_response['Location'], {}, admin_session
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, '<td>Air Tunisia</td>'
+    assert_includes last_response.body, '<td>TU28</td>'
+    assert_includes last_response.body, '<td>Prague</td>'
+    assert_includes last_response.body, '<td>06:35</td>'
+
+    parameters[:airline] = 'Air Turkey'
+    parameters[:destination] = 'Rio de Janeiro'
+    parameters[:hour] = '18'
+    parameters[:minute] = '20'
+
+    post '/flights/new', parameters, admin_session
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, 'Flight number TU28 is already being tracked.'
+  end
 end
