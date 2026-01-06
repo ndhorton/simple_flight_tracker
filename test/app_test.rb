@@ -339,4 +339,28 @@ class SimpleFlightTrackerTest < Minitest::Test
     assert_equal 302, last_response.status
     refute_includes last_response['Location'], '/flights'
   end
+
+  def test_user_signout
+    post '/users/signup', { username: 'test', password: 'testsecret' }
+    assert_equal 302, last_response.status
+    assert_includes load_user_credentials, 'test'
+
+    post '/users/signin', { username: 'test', password: 'testsecret' }
+    assert_equal 302, last_response.status
+    assert_equal 'test', session[:username]
+    assert_includes last_response['Location'], '/flights'
+
+    get '/users/signout'
+
+    assert_equal 302, last_response.status
+    assert_nil session[:username]
+
+    get last_response['Location']
+
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, '<h3>Please sign in or sign up'
+    assert_includes last_response.body, '<ul class="links"'
+    assert_includes last_response.body, 'Sign In'
+    assert_includes last_response.body, 'Sign Up'
+  end
 end
