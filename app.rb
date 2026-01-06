@@ -6,6 +6,35 @@ require 'sinatra'
 require 'sinatra/reloader' if development?
 require 'yaml'
 
+# TODO: write tests for existing functionality
+# TODO: add validation to check if a flight with that flight number
+#         is already being tracked
+# TODO: add edit button to flights page
+# TODO: add form view for edit
+# TODO: add GET and POST routes for edit
+
+def add_new_flight(parameters)
+  all_flights = load_user_flights
+  user_flights = all_flights[session[:username]] || []
+
+  flight = create_flight(parameters)
+  user_flights << flight
+
+  all_flights[session[:username]] = user_flights
+  save_user_flights(all_flights)
+  session[:message] = "Now tracking flight #{flight[:flight_number]}."
+end
+
+def create_flight(parameters)
+  {
+    id: SecureRandom.uuid,
+    airline: parameters[:airline],
+    flight_number: parameters[:flight_number],
+    destination: parameters[:destination],
+    departure_time: "#{parameters[:hour]}:#{parameters[:minute]}"
+  }
+end
+
 def credentials_pathname
   File.join(data_path, 'users.yaml')
 end
@@ -67,6 +96,26 @@ def valid_credentials?(username, password)
   BCrypt::Password.new(credentials[username]) == password
 end
 
+def validate_fields_not_empty(parameters)
+  parameters.each_pair do |key, value|
+    next unless value.strip.empty?
+
+    field = key.split('_').map(&:capitalize).join(' ')
+    session[:message] = "#{field} cannot be blank."
+    halt erb :new_flight
+  end
+end
+
+def validate_flight_fields(parameters)
+  validate_fields_not_empty(parameters)
+
+  flight_number = parameters[:flight_number].strip
+  return if flight_number.match?(/\A[a-zA-Z]{2}[0-9]{1,3}\z/)
+
+  session[:message] = 'Invalid Flight Number.'
+  halt erb :new_flight
+end
+
 helpers do
   def previous_select(current_option, param_option)
     return '' unless param_option == format('%02d', current_option)
@@ -123,12 +172,12 @@ post '/users/signup' do
   if username.empty?
     session[:message] = 'Username cannot be blank.'
     erb :signup
+  elsif password.empty?
+    session[:message] = 'Password cannot be blank.'
+    erb :signup
   elsif user_exists?(username)
     session[:message] = 'That username is taken. Please choose another.'
     @previous_username = username
-    erb :signup
-  elsif password.empty?
-    session[:message] = 'Password cannot be blank.'
     erb :signup
   else
     credentials = load_user_credentials
@@ -148,41 +197,24 @@ get '/flights' do
 end
 
 get '/flights/new' do
+  require_user_signin
+
   erb :new_flight
 end
 
 post '/flights/new' do
-  params.each_pair do |key, value|
-    next unless value.strip.empty?
+  require_user_signin
 
-    field = key.split('_').map(&:capitalize).join(' ')
-    session[:message] = "#{field} cannot be blank."
-    halt erb :new_flight
-  end
+  validate_flight_fields(params)
 
-  flight_number = params[:flight_number]
-  unless flight_number.match?(/[a-zA-Z]{2}[0-9]{1,3}/)
-    session[:message] = 'Invalid Flight Number.'
-    halt erb :new_flight
-  end
+  add_new_flight(params)
 
-  flight = {
-    id: SecureRandom.uuid,
-    airline: params[:airline],
-    flight_number: params[:flight_number],
-    destination: params[:destination],
-    departure_time: "#{params[:hour]}:#{params[:minute]}"
-  }
-  all_flights = load_user_flights
-  user_flights = all_flights[session[:username]] || []
-  user_flights << flight
-  all_flights[session[:username]] = user_flights
-  save_user_flights(all_flights)
-  session[:message] = "Now tracking flight #{flight[:flight_number]}."
   redirect '/flights'
 end
 
 get '/flights/:flight_id/delete' do
+  require_user_signin
+
   all_flights = load_user_flights
   user_flights = all_flights[session[:username]]
   flight = user_flights.find { |flight| flight[:id] == params[:flight_id] }
